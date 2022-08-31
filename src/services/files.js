@@ -50,9 +50,67 @@ const deleteFileByPrivateKey = async (privateKey) => {
 	});
 };
 
+const findTotalUploadByIpAddress = async (ipAddress) => {
+	return new Promise(async (resolve, reject) => {
+		const start = new Date();
+		start.setHours(0, 0, 0, 0);
+
+		const [fileErr, count] = await _p(Files.count({ createdAt: { $gte: start } }));
+
+		if (fileErr) return reject(fileErr);
+		return resolve(count);
+	});
+};
+
+const findTotalDownloadByIpAddress = async (ipAddress) => {
+	return new Promise(async (resolve, reject) => {
+		const start = new Date();
+		start.setHours(0, 0, 0, 0);
+
+		const [fileErr, count] = await _p(
+			Files.aggregate([
+				{
+					$match: {
+						$and: [
+							{ 'downloadInfo.downloadedIp': ipAddress },
+							{ 'downloadInfo.createdAt': { $gte: start } },
+						],
+					},
+				},
+				{
+					$group: {
+						_id: null,
+						total: {
+							$sum: {
+								$size: {
+									$filter: {
+										input: '$downloadInfo',
+										as: 'el',
+										cond: {
+											$eq: ['$$el.downloadedIp', ipAddress],
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			]),
+		);
+		if (fileErr) return reject(fileErr);
+
+		const totalFileDownload = count.length <= 0 ? 0 : count[0].total;
+		console.log(totalFileDownload);
+
+		return resolve(totalFileDownload);
+	});
+};
+
 module.exports = {
 	createFile,
 	getFileByPublicKey,
 	updateFileById,
 	deleteFileByPrivateKey,
+	findTotalUploadByIpAddress,
+	findTotalDownloadByIpAddress,
 };

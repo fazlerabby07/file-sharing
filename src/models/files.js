@@ -36,6 +36,11 @@ const filesSchema = new Schema(
 						type: String,
 						required: false,
 					},
+					createdAt: {
+						type: Date,
+						required: false,
+						default: Date.now
+					}
 				},
 			],
 		},

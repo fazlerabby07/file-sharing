@@ -12,6 +12,19 @@ const createFileInfo = async (req, res, next) => {
 		const publicKey = crypto.randomUUID();
 		const ownerIp = req.ip.split(':').slice(-1)[0];
 
+		const [err, uploadCount] = await _p(filesService.findTotalUploadByIpAddress(ownerIp));
+
+		if (err) {
+			_log(err, 'red');
+			return next(new Error('File fetching failed'));
+		}
+	
+		if (uploadCount >= process.env.DAILY_UPLOAD_LIMIT) {
+			return res
+				.status(400)
+				.json(createResponse(null, 'you already exceeded the upload limit for today', true, null));
+		}
+
 		const fileInfo = {
 			fileName: req.file.filename,
 			filePath: `/uploads/${req.file.filename}`,
@@ -34,6 +47,21 @@ const createFileInfo = async (req, res, next) => {
 };
 
 const getFileByPublicKey = async (req, res, next) => {
+	const ip = req.ip.split(':').slice(-1)[0];
+
+	const [err, downloadCount] = await _p(filesService.findTotalDownloadByIpAddress(ip));
+
+	if (err) {
+		_log(err, 'red');
+		return next(new Error('File fetching failed'));
+	}
+
+	if (downloadCount >= process.env.DAILY_DOWNLOAD_LIMIT) {
+		return res
+			.status(400)
+			.json(createResponse(null, 'you already exceeded the download limit for today', true, null));
+	}
+
 	const [fileErr, file] = await _p(filesService.getFileByPublicKey(req.params.publicKey));
 	if (fileErr) {
 		_log(fileErr, 'red');
@@ -43,10 +71,8 @@ const getFileByPublicKey = async (req, res, next) => {
 		return res.status(200).json(createResponse({}, 'No file found using this public key', false, null));
 
 	if (process.env.PROVIDER === Providers.LOCAL) {
-		const ip = req.ip.split(':').slice(-1)[0];
-
 		filesService.updateFileById(file._id, ip);
-	
+
 		const filePath = path.join(__dirname, `../${file.filePath}`);
 		return res.sendFile(filePath);
 	}
