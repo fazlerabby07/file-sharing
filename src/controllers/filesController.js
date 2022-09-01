@@ -5,6 +5,7 @@ const { createResponse } = require('../utils/responseGenerate');
 const crypto = require('crypto');
 const path = require('path');
 const { Providers } = require('../utils/providersEnum');
+const fs = require('fs');
 
 const createFileInfo = async (req, res, next) => {
 	if (req.file) {
@@ -12,14 +13,19 @@ const createFileInfo = async (req, res, next) => {
 		const publicKey = crypto.randomUUID();
 		const ownerIp = req.ip.split(':').slice(-1)[0];
 
+		// check if user ip address exist the upload file
 		const [err, uploadCount] = await _p(filesService.findTotalUploadByIpAddress(ownerIp));
 
 		if (err) {
 			_log(err, 'red');
 			return next(new Error('File fetching failed'));
 		}
-	
+
+		// if exist the limit then remove the file form local and give an error response
 		if (uploadCount >= process.env.DAILY_UPLOAD_LIMIT) {
+			const filePath = path.join(__dirname, `../uploads/${req.file.filename}`);
+			fs.unlinkSync(filePath);
+
 			return res
 				.status(400)
 				.json(createResponse(null, 'you already exceeded the upload limit for today', true, null));
@@ -33,6 +39,7 @@ const createFileInfo = async (req, res, next) => {
 			ownerIp,
 		};
 
+		// If all condition passed then create file information in DB
 		const [fileErr, file] = await _p(filesService.createFile(fileInfo));
 
 		if (fileErr) {
@@ -47,8 +54,11 @@ const createFileInfo = async (req, res, next) => {
 };
 
 const getFileByPublicKey = async (req, res, next) => {
+
+	// split the ip 
 	const ip = req.ip.split(':').slice(-1)[0];
 
+	// check if user have limit to download files
 	const [err, downloadCount] = await _p(filesService.findTotalDownloadByIpAddress(ip));
 
 	if (err) {
@@ -56,12 +66,14 @@ const getFileByPublicKey = async (req, res, next) => {
 		return next(new Error('File fetching failed'));
 	}
 
+	// if user exist the limit then send error response 
 	if (downloadCount >= process.env.DAILY_DOWNLOAD_LIMIT) {
 		return res
 			.status(400)
 			.json(createResponse(null, 'you already exceeded the download limit for today', true, null));
 	}
 
+	// get file info using file public key
 	const [fileErr, file] = await _p(filesService.getFileByPublicKey(req.params.publicKey));
 	if (fileErr) {
 		_log(fileErr, 'red');
@@ -81,6 +93,7 @@ const getFileByPublicKey = async (req, res, next) => {
 };
 
 const deleteFIlesByPrivateKey = async (req, res, next) => {
+	// delete file info using file private key
 	const [fileErr, file] = await _p(filesService.deleteFileByPrivateKey(req.params.privateKey));
 	if (fileErr) {
 		_log(fileErr, 'red');

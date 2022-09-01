@@ -20,6 +20,9 @@ app.use(express.static(path.join(__dirname, `${process.env.FOLDER}`)));
 // Error handler
 app.use(errorHandler);
 
+// cron job initialize
+require('./services/fileCleanUpCron');
+
 // Listen to the Port
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {

@@ -27,7 +27,6 @@ const updateFileById = async (id, downloadedIp) => {
 			Files.findByIdAndUpdate(
 				{ _id: id },
 				{
-					$set: { lastDownloadTime: new Date() },
 					$addToSet: {
 						downloadInfo: {
 							downloadedIp,
@@ -106,6 +105,19 @@ const findTotalDownloadByIpAddress = async (ipAddress) => {
 	});
 };
 
+const getListOfInactiveFileData = async (invalidationTime) => {
+	return new Promise(async (resolve, reject) => {
+		const calculateInvalidTime = invalidationTime * 60 * 60 * 1000;
+		const [fileErr, filesList] = await _p(
+			Files.find({
+				updatedAt: { $lte: new Date(Date.now() - calculateInvalidTime) },
+			}),
+		);
+		if (fileErr) return reject(fileErr);
+		return resolve(filesList);
+	});
+};
+
 module.exports = {
 	createFile,
 	getFileByPublicKey,
@@ -113,4 +125,5 @@ module.exports = {
 	deleteFileByPrivateKey,
 	findTotalUploadByIpAddress,
 	findTotalDownloadByIpAddress,
+	getListOfInactiveFileData,
 };

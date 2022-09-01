@@ -39,14 +39,10 @@ const filesSchema = new Schema(
 					createdAt: {
 						type: Date,
 						required: false,
-						default: Date.now
-					}
+						default: Date.now,
+					},
 				},
 			],
-		},
-		lastDownloadTime: {
-			type: Date,
-			required: false,
 		},
 	},
 	{ timestamps: true },
