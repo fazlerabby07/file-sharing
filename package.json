@@ -5,7 +5,8 @@
   "scripts": {
     "start": "nodemon src/index.js",
     "format": "prettier --write \"src/**/*.js\"",
-    "test": "jest --setupFiles dotenv/config"
+    "test": "jest --setupFiles dotenv/config --testTimeout=60000",
+    "test:e2e": "jest --config jest-e2e.json --setupFiles dotenv/config --testTimeout=60000"
   },
   "author": "muhammad hussain",
   "license": "ISC",

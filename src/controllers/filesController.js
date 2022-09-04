@@ -77,7 +77,8 @@ const getFileByPublicKey = async (req, res, next) => {
 			filesService.updateFileById(file._id, ip);
 
 			const filePath = path.join(__dirname, `../${file.filePath}`);
-			return res.status(200).sendFile(filePath);
+			return res.status(200).download(filePath);
+			// return res.status(200).json(createResponse(file, 'Your env provider is not local', true, null));
 		}
 
 		return res.status(400).json(createResponse(null, 'Your env provider is not local', true, null));
@@ -95,7 +96,7 @@ const deleteFIlesByPrivateKey = async (req, res, next) => {
 		if (!file)
 			return res
 				.status(404)
-				.json(createResponse({}, 'No file found using this public key', true, null));
+				.json(createResponse({}, 'No file found using this private key', true, null));
 
 		// delete file from local directory
 		const filePath = path.join(__dirname, `../${file.filePath}`);

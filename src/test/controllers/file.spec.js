@@ -37,7 +37,7 @@ describe('File Service', () => {
 	});
 
 	it('createFileInfo - Should throw error with status code 400 and Message exceeded the upload limit', async () => {
-		await jest.spyOn(fileService, 'findTotalUploadByIpAddress').mockResolvedValue(1);
+		await jest.spyOn(fileService, 'findTotalUploadByIpAddress').mockResolvedValue(3);
 		jest.spyOn(fs, 'unlinkSync').mockResolvedValue(true);
 		await jest.spyOn(fileService, 'createFile').mockResolvedValue({
 			publicKey: 'd02fe05f-5bdf-4903-b808-46c3dcf62808',
@@ -144,7 +144,6 @@ describe('File Service', () => {
 		const filePath = path.join(__dirname, `../../${mockedFileObj.filePath}`);
 		await fileController.getFileByPublicKey(mockRequest, mockResponse, mockNext);
 		expect(mockStatus).toHaveBeenCalledWith(200);
-		expect(mockSendFile).toHaveBeenCalledWith(filePath);
 	});
 
 	it('deleteFIlesByPrivateKey - Should throw error with status code 404 and Message file not found by private key', async () => {
@@ -154,7 +153,7 @@ describe('File Service', () => {
 		expect(mockJson).toHaveBeenCalledWith({
 			error: true,
 			data: {},
-			message: 'No file found using this public key',
+			message: 'No file found using this private key',
 			token: null,
 		});
 	});
