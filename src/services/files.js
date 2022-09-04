@@ -1,126 +1,124 @@
 const Files = require('../models/files');
-const _p = require('../helpers/simpleasync');
 
 const createFile = async (fileInfo) => {
-	return new Promise(async (resolve, reject) => {
-		const [fileErr, file] = await _p(Files.create(fileInfo));
-		if (fileErr) return reject(fileErr);
-		return resolve({
-			publicKey: file.publicKey,
-			privateKey: file.privateKey,
-		});
-	});
+	try {
+		const newFileInfo = await Files.create(fileInfo);
+		return {
+			publicKey: newFileInfo.publicKey,
+			privateKey: newFileInfo.privateKey,
+		};
+	} catch (error) {
+		throw new Error(error);
+	}
 };
 
-const getFileByPublicKey = async (publicKey) => {
-	return new Promise(async (resolve, reject) => {
-		const [fileErr, file] = await _p(Files.findOne({ publicKey }));
-		if (fileErr) return reject(fileErr);
-		if (!file) return resolve(null);
-		return resolve(file);
-	});
+const getFileByKey = async (query) => {
+	try {
+		const file = await Files.findOne(query);
+		return file;
+	} catch (error) {
+		throw new Error(error);
+	}
 };
 
 const updateFileById = async (id, downloadedIp) => {
-	return new Promise(async (resolve, reject) => {
-		const [fileErr, file] = await _p(
-			Files.findByIdAndUpdate(
-				{ _id: id },
-				{
-					$addToSet: {
-						downloadInfo: {
-							downloadedIp,
-						},
+	try {
+		await Files.findByIdAndUpdate(
+			{ _id: id },
+			{
+				$addToSet: {
+					downloadInfo: {
+						downloadedIp,
 					},
 				},
-				{ new: true },
-			),
+			},
+			{ new: true },
 		);
-		if (fileErr) return reject(fileErr);
-		return resolve({ message: 'file update successfully' });
-	});
+		return { message: 'file update successfully' };
+	} catch (error) {
+		throw new Error(error);
+	}
 };
 
 const deleteFileByPrivateKey = async (privateKey) => {
-	return new Promise(async (resolve, reject) => {
-		const [fileErr, _] = await _p(Files.findOneAndDelete({ privateKey }));
-		if (fileErr) return reject(fileErr);
-		return resolve({ message: 'file delete successfully.' });
-	});
+	try {
+		const fileDelete = await Files.findOneAndDelete({ privateKey });
+		if (!fileDelete) throw new Error('file not found.');
+		return { message: 'file delete successfully.' };
+	} catch (error) {
+		throw new Error(error);
+	}
 };
 
 const findTotalUploadByIpAddress = async (ipAddress) => {
-	return new Promise(async (resolve, reject) => {
+	try {
 		const start = new Date();
 		start.setHours(0, 0, 0, 0);
 
-		const [fileErr, count] = await _p(Files.count({ createdAt: { $gte: start } }));
+		const count = Files.count({ createdAt: { $gte: start } });
 
-		if (fileErr) return reject(fileErr);
-		return resolve(count);
-	});
+		return count;
+	} catch (error) {
+		throw new Error(error);
+	}
 };
 
 const findTotalDownloadByIpAddress = async (ipAddress) => {
-	return new Promise(async (resolve, reject) => {
+	try {
 		const start = new Date();
 		start.setHours(0, 0, 0, 0);
 
-		const [fileErr, count] = await _p(
-			Files.aggregate([
-				{
-					$match: {
-						$and: [
-							{ 'downloadInfo.downloadedIp': ipAddress },
-							{ 'downloadInfo.createdAt': { $gte: start } },
-						],
-					},
+		const countOfSameIpAddress = await Files.aggregate([
+			{
+				$match: {
+					$and: [
+						{ 'downloadInfo.downloadedIp': ipAddress },
+						{ 'downloadInfo.createdAt': { $gte: start } },
+					],
 				},
-				{
-					$group: {
-						_id: null,
-						total: {
-							$sum: {
-								$size: {
-									$filter: {
-										input: '$downloadInfo',
-										as: 'el',
-										cond: {
-											$eq: ['$$el.downloadedIp', ipAddress],
-										},
+			},
+			{
+				$group: {
+					_id: null,
+					total: {
+						$sum: {
+							$size: {
+								$filter: {
+									input: '$downloadInfo',
+									as: 'el',
+									cond: {
+										$eq: ['$$el.downloadedIp', ipAddress],
 									},
 								},
 							},
 						},
 					},
 				},
-			]),
-		);
-		if (fileErr) return reject(fileErr);
-
-		const totalFileDownload = count.length <= 0 ? 0 : count[0].total;
-		console.log(totalFileDownload);
-
-		return resolve(totalFileDownload);
-	});
+			},
+		]);
+		const totalFileDownload = countOfSameIpAddress.length <= 0 ? 0 : countOfSameIpAddress[0].total;
+		return totalFileDownload;
+	} catch (error) {
+		throw new Error(error);
+	}
 };
 
 const getListOfInactiveFileData = async (invalidationTime) => {
-	return new Promise(async (resolve, reject) => {
+	try {
 		const calculateInvalidTime = invalidationTime * 60 * 60 * 1000;
-		const [fileErr, filesList] = await _p(
-			Files.find({
-				updatedAt: { $lte: new Date(Date.now() - calculateInvalidTime) },
-			}),
-		);
-		if (fileErr) return reject(fileErr);
-		return resolve(filesList);
-	});
+		const filesList = await Files.find({
+			updatedAt: { $lte: new Date(Date.now() - calculateInvalidTime) },
+		});
+
+		return filesList;
+	} catch (error) {
+		throw new Error(error);
+	}
 };
 
 module.exports = {
 	createFile,
-	getFileByPublicKey,
+	getFileByKey,
 	updateFileById,
 	deleteFileByPrivateKey,
 	findTotalUploadByIpAddress,
